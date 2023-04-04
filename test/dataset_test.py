@@ -57,10 +57,10 @@ if __name__ == "__main__":
     # # print(train_loader)
     #
     train_dataset = MyDataset(data_path, train=True, transform=None)
-    train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+    train_loader = DataLoader(train_dataset, batch_size=32, shuffle=True)
 
     test_dataset = MyDataset(data_path, train=False, transform=None)
-    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+    test_loader = DataLoader(test_dataset, batch_size=32, shuffle=True)
     for data in test_loader:
         inputs, labels = data
         inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)

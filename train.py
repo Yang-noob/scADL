@@ -10,10 +10,10 @@ device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 
 data_path = "./data/train_set_10x"
 train_dataset = MyDataset(data_path, train=True, transform=None)
-train_loader = DataLoader(train_dataset, batch_size=1, shuffle=True)
+train_loader = DataLoader(train_dataset, batch_size=40, shuffle=True)
 
 test_dataset = MyDataset(data_path, train=False, transform=None)
-test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
+test_loader = DataLoader(test_dataset, batch_size=10, shuffle=True)
 
 # length 长度
 train_dataset_size = len(train_dataset)
@@ -43,20 +43,20 @@ for i in range(epoch):
     for data in train_loader:
         inputs, labels = data
         inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
-        #inputs = inputs.permute(1, 0, 2, 3)
+        inputs = inputs.permute(1, 0, 2, 3)
+        # print(inputs.shape)
+        # print(labels.shape)
         inputs = inputs.to(device)  # GPU           #imgs = imgs.to(device)
         labels = labels.to(device)  # GPU     #targets = targets.to(device)
         outputs = net.forward(inputs)  # 让输入通过层层特征提取网络（前向传播）
         # 特征提取：输入的像素点矩阵x * 权重参数矩阵w的过程，像素矩阵x的行列（形状）会发生变化，权重矩阵w的元素值将来会被不断更新。
         loss = criterion(outputs, labels)  # 计算在dataloader中一次训练的损失（每一轮输出的得分和真实值作比较的过程）
-
         # 优化器优化
         optimizer.zero_grad()  # 梯度清零
         loss.backward()  # 反向传播，求解损失函数梯度
         optimizer.step()  # 更新权重参数
-
         total_train_step = total_train_step + 1
-        if total_train_step % 100 == 0:
+        if total_train_step % 20 == 0:
             print("第 {} 次训练的Loss：{}".format(total_train_step, loss.item()))
 
     # 验证步骤开始（验证训练结果怎么样）
@@ -68,20 +68,21 @@ for i in range(epoch):
         for data in test_loader:
             inputs, labels = data
             inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
+            inputs = inputs.permute(1, 0, 2, 3)
             inputs = inputs.to(device)  # GPU          #imgs = imgs.to(device)
             labels = labels.to(device)  # GPU    #targets = targets.to(device)
             outputs = net.forward(inputs)
             # 特征提取网络经过该轮训练，神经网络参数w被更新，将输入图片放入该网络后的到的得分值被记录下来
             loss = criterion(outputs, labels)  # 计算损失
             total_test_loss = total_test_loss + loss
-            accuracy = (outputs.argmax(1) == labels).sum()  # 正确率的分子
+            accuracy = (outputs.argmax(1) == labels.argmax(1)).sum()  # 正确率的分子
             total_test_accuracy = total_test_accuracy + accuracy
 
     print("整体测试集上的loss:{}".format(total_test_loss))
     print("整体测试集上的正确率:{}".format(total_test_accuracy / test_dataset_size))
     total_test_step = total_test_step + 1
 
-    torch.save(net, "./checkpoints/ywh_{}.pth".format(i))
+    torch.save(net, "./checkpoints/ywh_{}.pth".format(i+1))
     print("模型已保存")
 # # 训练神经网络
 # for epoch in range(epoch):  # 进行10个epoch的训练
