@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torch.optim as optim
-from my_dataset import MyDataset
+from read_datasets import MyDataset
 from torch.utils.data import DataLoader
 import torch
 from Net import Net
@@ -33,7 +33,7 @@ optimizer = optim.SGD(net.parameters(), lr=0.0005, momentum=0.9)
 # 设置神经网络的一些参数
 total_train_step = 0  # 训练的次数
 total_test_step = 0  # 测试的次数
-epoch = 100  # 训练的轮数
+epoch = 20  # 训练的轮数
 
 
 for i in range(epoch):
@@ -115,7 +115,7 @@ for i in range(epoch):
 #         total += labels.size(0)
 #         correct += (predicted == labels).sum().item()
 #
-# print('Accuracy of the network on the %d test images: %d %%' % (total,
+# print('Accuracy of the network on the %d code_test images: %d %%' % (total,
 #                                                                 100 * correct / total))
 
 
