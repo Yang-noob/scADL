@@ -3,14 +3,16 @@ import sys
 sys.path.append("..")
 
 import pandas as pd
-from utils import Labels_Process
+from utils import Labels_Process as lp
 
 train_label = pd.read_csv('G:/labels.csv', header=None)
 print(train_label.shape)
 print(train_label)
 print("*" * 100)
-a = train_label[0]
-print(a)
+dict1 = lp.type_to_label_dict(train_label)
+print(dict1)
+dict1 = lp.label_to_type_dict(dict1)
+print(dict1)
 
 # lp = Labels_Process()
 # type_to_label_dict = lp.type_to_label_dict(train_label.iloc[:, 1])

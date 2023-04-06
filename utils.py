@@ -150,70 +150,144 @@ class Format_Convert:
 
 
 class Datasets_Process:
-    def __init__(self, *datasets):
-        self.common_genes = None
-        self.datasets = list(datasets)
+    @staticmethod
+    def capitalize_genes_name(*datasets):
+        dataset_list = list(datasets)
+        for i in range(len(dataset_list)):
+            dataset_list[i].index = [s.upper() for s in dataset_list[i].index]
+        if len(dataset_list) == 1:
+            return dataset_list[0]
+        else:
+            return dataset_list
 
-    def capitalize_genes_name(self):
-        for i in range(len(self.datasets)):
-            self.datasets[i].index = [s.upper() for s in self.datasets[i].index]
-        return self.datasets
+    @staticmethod
+    def filt_duplicate_rows(*datasets):
+        datasets_list = list(datasets)
+        for i in range(len(datasets_list)):
+            datasets_list[i] = datasets_list[i].loc[~datasets_list[i].index.duplicated(keep='first')]
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+        else:
+            return datasets_list
 
-    def filt_duplicate_rows(self):
-        for i in range(len(self.datasets)):
-            self.datasets[i] = self.datasets[i].loc[~self.datasets[i].index.duplicated(keep='first')]
-        return self.datasets
+    @staticmethod
+    def get_common_genes(*datasets):
+        datasets_list = list(datasets)
+        if len(datasets_list) == 1:
+            return datasets_list[0].loc[~datasets_list[0].index.duplicated(keep='first')].index.tolist()
+        common_genes = set(datasets_list[0].index)
+        for i in range(1, len(datasets_list)):
+            common_genes = set.intersection(set(datasets_list[i].index), common_genes)
+        common_genes = sorted(list(common_genes))
+        return common_genes
 
-    def get_common_genes(self):
-        self.common_genes = set(self.datasets[0].index)
-        for i in range(1, len(self.datasets)):
-            self.common_genes = set.intersection(set(self.datasets[i].index), self.common_genes)
-        self.common_genes = sorted(list(self.common_genes))
-        return self.common_genes
-
-    def merge_datasets(self, genes):
-        # if genes != self.get_common_genes():
-        #     print("genes != common_genes")
-        #     genes = self.get_common_genes()
+    @staticmethod
+    def merge_datasets(*datasets, common_genes=None, return_original_sep=False):
+        datasets_list = list(datasets)
+        if common_genes is None:
+            common_genes = Datasets_Process.get_common_genes(*datasets)
         sep_point = [0]
-        for i in range(len(self.datasets)):
-            self.datasets[i] = self.datasets[i].loc[genes,]
-            sep_point.append(self.datasets[i].shape[1])
-        merged_dataset = np.array(pd.concat(self.datasets, axis=1, sort=False), dtype=np.float32)
-        return merged_dataset, sep_point
+        for i in range(len(datasets_list)):
+            datasets_list[i] = datasets_list[i].loc[common_genes,]
+            sep_point.append(datasets_list[i].shape[1])
+        merged_dataset = pd.concat(datasets_list, axis=1, sort=False)
+        if return_original_sep:
+            return merged_dataset, sep_point
+        return merged_dataset
 
-    def normalize(self, merged_datasets):
-        merged_datasets = np.array(merged_datasets)
-        normalized_datasets = np.divide(merged_datasets, np.sum(merged_datasets, axis=0, keepdims=True)) * 10000
-        normalized_datasets = np.log2(normalized_datasets + 1)
-        expr = np.sum(normalized_datasets, axis=1)
-        normalized_datasets = normalized_datasets[
-            np.logical_and(expr >= np.percentile(expr, 1), expr <= np.percentile(expr, 99)),]
-        cv = np.std(normalized_datasets, axis=1) / np.mean(normalized_datasets, axis=1)
-        normalized_datasets = normalized_datasets[
-            np.logical_and(cv >= np.percentile(cv, 1), cv <= np.percentile(cv, 99)),]
-        return normalized_datasets
+    @staticmethod
+    def normalize(*datasets, scale_factor=10000, low_range=1, high_range=99):
+        datasets_list = list(datasets)
+        for i in range(len(datasets_list)):
+            datasets_list[i] = np.array(datasets_list[i])
+            datasets_list[i] = np.divide(datasets_list[i], np.sum(datasets_list[i], axis=0, keepdims=True)) * scale_factor
+            datasets_list[i] = np.log2(datasets_list[i] + 1)
+            expr = np.sum(datasets_list[i], axis=1)
+            datasets_list[i] = datasets_list[i][
+                np.logical_and(expr >= np.percentile(expr, low_range), expr <= np.percentile(expr, high_range)),]
+            cv = np.std(datasets_list[i], axis=1) / np.mean(datasets_list[i], axis=1)
+            datasets_list[i] = datasets_list[i][
+                np.logical_and(cv >= np.percentile(cv, low_range), cv <= np.percentile(cv, high_range)),]
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+        return datasets_list
 
-    def split_datasets(self, dataset, group_size):
+    @staticmethod
+    def split_datasets(dataset, group_size, by_scale=False, discard_end=False):
         if group_size[0] != 0:
             group_size = [0] + group_size
-        data_len = dataset.shape[1]
-        if data_len != sum(group_size):
-            print("数据集宽度和分组宽度不匹配！")
-            print("数据集宽度: {} ,分组总宽度: {}".format(data_len, sum(group_size)))
-            print("请重新设置拆分数据!")
-            return []
-        sets = []
-        for i in range(len(group_size) - 1):
-            sets.append(dataset[:, sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
-        return sets
+        if isinstance(dataset, pd.DataFrame):
+            data_len = dataset.shape[1]
+            sets = []
+            if ~by_scale:
+                if data_len != sum(group_size):
+                    print("数据集宽度和分组总宽度不匹配！")
+                    print("数据集宽度: {} ,分组总宽度: {}".format(data_len, sum(group_size)))
+                    print("请重新设置拆分数据!")
+                    return []
+                for i in range(len(group_size) - 1):
+                    sets.append(dataset.iloc[:, sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
+                return sets
+            if data_len != sum(group_size):
+                print("数据集宽度和分组总宽度不匹配！")
+                print("数据集宽度: {} ,分组总宽度: {}".format(data_len, sum(group_size)))
+                print("按照比例进行拆分中...")
+                if discard_end:
+                    for i in range(len(group_size)):
+                        group_size[i] = int((group_size[i] / sum(group_size)) * data_len)
+                    for i in range(len(group_size) - 1):
+                        sets.append(dataset.iloc[:, sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
+                        return sets
+                for i in range(len(group_size)-1):
+                    group_size[i] = int((group_size[i]/sum(group_size)) * data_len)
+                group_size[len(group_size)-1] = data_len-sum(group_size[0:len(group_size)-2])
+                for i in range(len(group_size)-1):
+                    sets.append(dataset.iloc[:, sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
+                    return sets
+            for i in range(len(group_size) - 1):
+                sets.append(dataset.iloc[:, sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
+            return sets
+        elif isinstance(dataset, np.ndarray):
+            new_group_size = []
+            for i in range(len(group_size)):
+                new_group_size.append(sum(group_size[:i+1]))
+            del new_group_size[0]
+            del new_group_size[-1]
+            array_sets_list = np.split(dataset,new_group_size, axis=1)
+            return array_sets_list
+        else:
+            print("暂不支持拆分此格式的数据集！")
 
 
 class Labels_Process:
-    def __init__(self):
-        self.a = 0
+    @staticmethod
+    def merge_labels(*label, return_original_sep=False):
+        labels_list = list(label)
+        sep_point = [0]
+        for i in range(len(labels_list)):
+            sep_point.append(labels_list[i].shape[0])
+        merged_label = pd.concat(labels_list, axis=0, sort=False)
+        if return_original_sep:
+            return merged_label, sep_point
+        return merged_label
 
-    def type_to_label_dict(self, cell_type):
+    @staticmethod
+    def split_labels(merged_label, group_size):
+        if group_size[0] != 0:
+            group_size = [0] + group_size
+        merged_label_len = merged_label.shape[0]
+        if merged_label_len != sum(group_size):
+            print("标签数量和分组标签数量不匹配！")
+            print("标签数量: {} ,分组标签总数: {}".format(merged_label_len, sum(group_size)))
+            print("请重新设置拆分数据!")
+            return []
+        labels = []
+        for i in range(len(group_size) - 1):
+            labels.append(merged_label[sum(group_size[:(i + 1)]):sum(group_size[:(i + 2)])])
+        return labels
+
+    @staticmethod
+    def type_to_label_dict(cell_type):
         cell_type = cell_type.iloc[:, 1]
         all_type = list(sorted(set(cell_type)))
         type_to_label_dict = {}
@@ -221,11 +295,13 @@ class Labels_Process:
             type_to_label_dict[all_type[i]] = i
         return type_to_label_dict
 
-    def label_to_type_dict(self, type_to_label_dict):
+    @staticmethod
+    def label_to_type_dict(type_to_label_dict):
         label_to_type_dict = {v: k for k, v in type_to_label_dict.items()}
         return label_to_type_dict
 
-    def convert_type_to_label(self, cell_type, type_to_label_dict):
+    @staticmethod
+    def convert_type_to_label(cell_type, type_to_label_dict):
         cell_type_columns = cell_type.iloc[:, 1]
         cell_types = list(cell_type_columns)
         labels = []
@@ -234,12 +310,15 @@ class Labels_Process:
         cell_type[2] = pd.Series(labels)
         return cell_type
 
-    def one_hot_matrix(self, labels):
+    @staticmethod
+    def one_hot_matrix(labels):
         num_class = len(set(labels))
         one_hot_matrix = torch.nn.functional.one_hot(torch.tensor(labels), num_class).float().numpy()
         return one_hot_matrix, num_class
 
 
+# 功能:将数据集和标签是否一一对应，防止数据集和标签不配对造成错误
+# 输入:数据集的dataframe对象，标签dataframe对象，check_common_cell:按照提取共同细胞的方式配对，顺序会打乱
 def dataset_label_match(dataset, label, check_common_cell=False):
     if not check_common_cell:
         cell_num = dataset.shape[1]
@@ -252,14 +331,12 @@ def dataset_label_match(dataset, label, check_common_cell=False):
         else:
             label = label.set_index(label.iloc[:, 0], inplace=False)
             label = label.loc[dataset.columns.tolist(),]
-            # label.reset_index(inplace=True)
-            # label.drop(0, axis=1, inplace=True)
             label = label.reset_index(drop=True)
             return dataset, label
     else:
         common_cells = sorted(list(set.intersection(set(dataset.columns.tolist()), set(label[0]))))
         dataset = dataset.loc[:, common_cells]
         label = label.set_index(label.iloc[:, 0], inplace=False)
-        label = label.loc[common_cells, ]
+        label = label.loc[common_cells,]
         label = label.reset_index(drop=True)
         return dataset, label
