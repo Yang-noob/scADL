@@ -6,8 +6,8 @@ def get_train_parser(parser=None):
     if parser is None:
         parser = argparse.ArgumentParser(description="训练参数")
     parser.add_argument("--pre_model_path", "-pmp", type=str, help="预训练模型路径", default='./checkpoints/0.pth')
-    parser.add_argument("--train_set", "-trs", type=str, help="训练集文件路径", default='./data/')
-    parser.add_argument("--train_label", "-trl", type=str, help="训练集标签文件路径", default='./data/')
+    parser.add_argument("--train_set_path", "-trs", type=str, help="训练集文件路径", default='./data/')
+    parser.add_argument("--train_label_path", "-trl", type=str, help="训练集标签文件路径", default='./data/')
     parser.add_argument("--epoch", "-ep", type=int, help="训练轮数 (默认: 50)", default=50)
     parser.add_argument("--batch_size", "-bs", type=int, help="批量大小 (默认: 64)", default=64)
     parser.add_argument("--model_sava_path", "-msp", type=str, help="模型保存位置", default='./checkpoints')

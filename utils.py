@@ -343,3 +343,40 @@ def dataset_label_match(dataset, label, check_common_cell=False):
         label = label.loc[common_cells,]
         label = label.reset_index(drop=True)
         return dataset, label
+
+
+def creat_dir(path):
+    """
+        Create a directory with an incremental name if the directory already exists.
+        """
+    if not os.path.exists(path):
+        os.mkdir(path)
+        return path
+    # if directory already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = path + '_' + str(i)
+        if not os.path.exists(new_path):
+            os.mkdir(new_path)
+            return new_path
+        i += 1
+
+
+def creat_file(path):
+    """
+        Create a file with an incremental name if the file already exists.
+        """
+    if not os.path.exists(path):
+        with open(path, 'w'):
+            pass
+        return path
+
+    # if file already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = os.path.splitext(path)[0] + '_' + str(i) + os.path.splitext(path)[1]
+        if not os.path.exists(new_path):
+            with open(new_path, 'w'):
+                pass
+            return new_path
+        i += 1
