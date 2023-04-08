@@ -22,17 +22,22 @@
 #     # print(shape)
 
 import pandas as pd
-
+import numpy as np
 
 dataset1 = pd.read_hdf('G:/dataset_test/tma_10x_cleaned.h5', key="dge")
 print(dataset1.shape)
-print(dataset1.iloc[1, ])
+print(dataset1)
+# print(dataset1.iloc[1, ])
 print('******************************************************************************')
-di = dataset1.index
-a = [s.upper() for s in di]
-print(a)
+# di = dataset1.index
+# a = [s.upper() for s in di]
+# print(a)
 # data_columns = dataset1.columns
-columns = dataset1.columns.tolist()
-print(columns)
+# columns = dataset1.columns.tolist()
+# print(columns)
 
+arr = np.array(dataset1, dtype=np.float32)
+
+print(arr.shape)
+print(arr)
 # print(data_columns)

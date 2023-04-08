@@ -3,47 +3,73 @@ import torch.optim as optim
 from read_datasets import MyDataset
 from torch.utils.data import DataLoader
 import torch
-from Net import Net
+from Net import CNN_Net
+from Net import FC_Net_1
+import pandas as pd
+from utils import Labels_Process as lp
+import numpy as np
 
 
 device = torch.device("cuda:0" if (torch.cuda.is_available()) else "cpu")
 
-data_path = "./data/train_set_10x"
-train_dataset = MyDataset(data_path, train=True, transform=None)
-train_loader = DataLoader(train_dataset, batch_size=40, shuffle=True)
+data_path = "G:/test_data/train_set.h5"
+label_path = "G:/test_data/train_label.txt"
 
-test_dataset = MyDataset(data_path, train=False, transform=None)
-test_loader = DataLoader(test_dataset, batch_size=10, shuffle=True)
+dataset1 = pd.read_hdf(data_path, key="dge")
+label1 = pd.read_csv(label_path, header=None, sep='\t')
+# print(dataset1.shape)
+# print(label1.shape)
+# print(dataset1)
+# print(label1)
+
+label1_dict = lp.type_to_label_dict(label1)
+lab = lp.convert_type_to_label(label1, label1_dict)
+# print(label1_dict)
+# print(lab)
+
+arr_data = np.array(dataset1)
+arr_label = np.array(lab)
+# print(arr_data.shape)
+# print(arr_data)
+
+one_hot_matrix, num_class = lp.one_hot_matrix(lab)
+features = arr_data.shape[0]
+
+train_dataset = MyDataset(arr_data, one_hot_matrix, percentage=0.6, train=True, transform=False)
+train_loader = DataLoader(train_dataset, batch_size=200, shuffle=True)
+
+test_dataset = MyDataset(arr_data, one_hot_matrix, percentage=0.4, train=False, transform=False)
+test_loader = DataLoader(test_dataset, batch_size=124, shuffle=True)
 
 # length 长度
 train_dataset_size = len(train_dataset)
 test_dataset_size = len(test_dataset)
-print("训练数据集的长度为{}".format(train_dataset_size))
-print("测试数据集的长度为{}".format(test_dataset_size))
+print("训练集长度: {}".format(train_dataset_size))
+print("测试集长度: {}".format(test_dataset_size))
 
 # 初始化神经网络，损失函数和优化器
-net = Net()
+net = FC_Net_1(features=features, total_number_types=num_class)
 net = net.to(device)
 
 criterion = nn.CrossEntropyLoss()
 criterion = criterion.to(device)
 
-optimizer = optim.SGD(net.parameters(), lr=0.0005, momentum=0.9)
+optimizer = optim.SGD(net.parameters(), lr=0.0008, momentum=0.8)
 
 # 设置神经网络的一些参数
 total_train_step = 0  # 训练的次数
 total_test_step = 0  # 测试的次数
-epoch = 20  # 训练的轮数
+epoch = 200  # 训练的轮数
 
 
 for i in range(epoch):
-    print("-------第 {}轮训练开始-------".format(i + 1))
+    print("--------------第 {} 轮训练--------------".format(i + 1))
     # 训练步骤开始
     net.train()
     for data in train_loader:
         inputs, labels = data
-        inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
-        inputs = inputs.permute(1, 0, 2, 3)
+        # inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
+        # inputs = inputs.permute(1, 0, 2, 3)
         # print(inputs.shape)
         # print(labels.shape)
         inputs = inputs.to(device)  # GPU           #imgs = imgs.to(device)
@@ -55,8 +81,9 @@ for i in range(epoch):
         optimizer.zero_grad()  # 梯度清零
         loss.backward()  # 反向传播，求解损失函数梯度
         optimizer.step()  # 更新权重参数
+
         total_train_step = total_train_step + 1
-        if total_train_step % 20 == 0:
+        if total_train_step % 40 == 0:
             print("第 {} 次训练的Loss：{}".format(total_train_step, loss.item()))
 
     # 验证步骤开始（验证训练结果怎么样）
@@ -67,8 +94,8 @@ for i in range(epoch):
     with torch.no_grad():
         for data in test_loader:
             inputs, labels = data
-            inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
-            inputs = inputs.permute(1, 0, 2, 3)
+            # inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
+            # inputs = inputs.permute(1, 0, 2, 3)
             inputs = inputs.to(device)  # GPU          #imgs = imgs.to(device)
             labels = labels.to(device)  # GPU    #targets = targets.to(device)
             outputs = net.forward(inputs)
@@ -82,40 +109,5 @@ for i in range(epoch):
     print("整体测试集上的正确率:{}".format(total_test_accuracy / test_dataset_size))
     total_test_step = total_test_step + 1
 
-    torch.save(net, "./checkpoints/ywh_{}.pth".format(i+1))
-    print("模型已保存")
-# # 训练神经网络
-# for epoch in range(epoch):  # 进行10个epoch的训练
-#     running_loss = 0.0
-#     for i, data in enumerate(train_loader, 0):
-#         inputs, labels = data
-#         inputs = inputs.cuda(0)
-#         labels = labels.cuda(0)
-#         optimizer.zero_grad()
-#
-#         outputs = net(inputs)
-#         loss = criterion(outputs, labels)
-#         loss.backward()
-#         optimizer.step()
-#
-#         running_loss += loss.item()
-#         if i % 100 == 0:  # 每 100 批次打印一次损失函数值
-#             print('[%d, %5d] loss: %.3f' %
-#                   (epoch + 1, i + 1, running_loss / 2000))
-#             running_loss = 0.0
-#
-# # 测试神经网络
-# correct = 0
-# total = 0
-# with torch.no_grad():
-#     for data in test_loader:
-#         inputs, labels = data
-#         outputs = net(inputs)
-#         _, predicted = torch.max(outputs.data, 1)
-#         total += labels.size(0)
-#         correct += (predicted == labels).sum().item()
-#
-# print('Accuracy of the network on the %d code_test images: %d %%' % (total,
-#                                                                 100 * correct / total))
-
-
+    # torch.save(net, "./checkpoints/ywh_{}.pth".format(i+1))
+    # print("模型已保存")

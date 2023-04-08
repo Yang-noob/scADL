@@ -301,14 +301,17 @@ class Labels_Process:
         return label_to_type_dict
 
     @staticmethod
-    def convert_type_to_label(cell_type, type_to_label_dict):
+    def convert_type_to_label(cell_type, type_to_label_dict, return_labels_only=True):
         cell_type_columns = cell_type.iloc[:, 1]
         cell_types = list(cell_type_columns)
         labels = []
         for types in cell_types:
             labels.append(type_to_label_dict[types])
-        cell_type[2] = pd.Series(labels)
-        return cell_type
+        if return_labels_only:
+            return labels
+        else:
+            cell_type[2] = pd.Series(labels)
+            return cell_type
 
     @staticmethod
     def one_hot_matrix(labels):
