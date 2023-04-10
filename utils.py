@@ -205,7 +205,7 @@ class Datasets_Process:
             expr = np.sum(datasets_list[i], axis=1)
             datasets_list[i] = datasets_list[i][
                 np.logical_and(expr >= np.percentile(expr, low_range), expr <= np.percentile(expr, high_range)),]
-            cv = np.std(datasets_list[i], axis=1) / np.mean(datasets_list[i], axis=1)
+            cv = np.std(datasets_list[i], axis=1) / ( np.mean(datasets_list[i], axis=1) + 1e-10)
             datasets_list[i] = datasets_list[i][
                 np.logical_and(cv >= np.percentile(cv, low_range), cv <= np.percentile(cv, high_range)),]
         if len(datasets_list) == 1:
@@ -343,6 +343,17 @@ def dataset_label_match(dataset, label, check_common_cell=False):
         label = label.loc[common_cells,]
         label = label.reset_index(drop=True)
         return dataset, label
+
+
+class filt_genes_and_cells:
+    @staticmethod
+    def filt_cell(dataset, label, threshold):
+        counts = (dataset != 0).sum(axis=0)
+        filtered_cells = counts[counts > threshold].index
+        filtered_df = dataset[filtered_cells]
+        cells = filtered_df.columns
+        label = label.loc[cells,]
+        return filtered_df, label
 
 
 def creat_dir(path):
