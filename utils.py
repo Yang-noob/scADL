@@ -213,6 +213,32 @@ class Datasets_Process:
         return datasets_list
 
     @staticmethod
+    def tensor_normalize(*datasets, scale_factor=10000, low_range=1, high_range=99):
+        datasets_list = list(datasets)
+        for i in range(len(datasets_list)):
+            datasets_list[i] = torch.Tensor(datasets_list[i])
+            datasets_list[i] = datasets_list[i] / torch.sum(datasets_list[i], dim=0, keepdim=True) * scale_factor
+            datasets_list[i] = torch.log2(datasets_list[i] + 1)
+            # Filter genes by expression level
+            expr = torch.sum(datasets_list[i], dim=1)
+            expr_low = torch.kthvalue(expr, int(len(expr) * low_range / 100)).values
+            expr_high = torch.kthvalue(expr, int(len(expr) * high_range / 100)).values
+            expr_mask = (expr >= expr_low) & (expr <= expr_high)
+            datasets_list[i] = datasets_list[i][expr_mask, :]
+            # Filter genes by coefficient of variation
+            mean = torch.mean(datasets_list[i], dim=1, keepdim=True)
+            std = torch.std(datasets_list[i], dim=1, keepdim=True)
+            cv = std / (mean + 1e-10)
+            cv = torch.squeeze(cv)
+            cv_low = torch.kthvalue(cv, int(len(cv) * low_range / 100)).values
+            cv_high = torch.kthvalue(cv, int(len(cv) * high_range / 100)).values
+            cv_mask = (cv >= cv_low) & (cv <= cv_high)
+            datasets_list[i] = datasets_list[i][cv_mask, :]
+        if len(datasets_list) == 1:
+            return datasets_list[0]
+        return datasets_list
+
+    @staticmethod
     def split_datasets(dataset, group_size, by_scale=False, discard_end=False):
         if group_size[0] != 0:
             group_size = [0] + group_size
@@ -347,13 +373,16 @@ def dataset_label_match(dataset, label, check_common_cell=False):
 
 class filt_genes_and_cells:
     @staticmethod
-    def filt_cell(dataset, label, threshold):
+    def filt_genes(dataset, threshold):
+        counts = (dataset != 0).sum(axis=1)
+        filtered_genes = counts[counts > threshold].index
+        filtered_dataset = dataset.loc[filtered_genes, ]
+        return filtered_dataset
+
+    @staticmethod
+    def filt_cells(dataset, labels, threshold):
         counts = (dataset != 0).sum(axis=0)
-        filtered_cells = counts[counts > threshold].index
-        filtered_df = dataset[filtered_cells]
-        cells = filtered_df.columns
-        label = label.loc[cells,]
-        return filtered_df, label
+
 
 
 def creat_dir(path):

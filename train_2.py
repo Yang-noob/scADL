@@ -41,8 +41,8 @@ from utils import Datasets_Process as dp
 device = torch.device("cuda" if (torch.cuda.is_available()) else "cpu")
 
 '''设置训练集和标签路径'''
-data_path = "G:/actinn_dataset/tma_ss2_cleaned.h5"
-label_path = "G:/actinn_dataset/tma_ss2_cleaned_label.txt"
+data_path = "G:/test_data/train_set.h5"
+label_path = "G:/test_data/train_label.txt"
 
 '''读取数据集和标签'''
 dataset1 = pd.read_hdf(data_path, key="dge")
@@ -51,11 +51,6 @@ label1 = pd.read_csv(label_path, header=None, sep='\t')
 # print(label1.shape)
 # print(dataset1)
 # print(label1)
-dataset1 = dataset1.iloc[:, :4000]
-# train_set = dp.capitalize_genes_name(dataset1)
-# train_set = dp.filt_duplicate_rows(train_set)
-dataset1 = dp.normalize(dataset1)
-
 
 '''将标签转为字典'''
 label1_dict = lp.type_to_label_dict(label1)
@@ -65,7 +60,7 @@ lab = lp.convert_type_to_label(label1, label1_dict)
 # print(lab)
 
 '''将数据集和数字标签转为numpy数组'''
-arr_data = np.array(dataset1)
+arr_data = np.array(dataset1.values, dtype=np.float32)
 arr_label = np.array(lab)
 print(arr_data.shape)
 # print(arr_data)
@@ -73,15 +68,22 @@ print(arr_data.shape)
 '''将数字标签转为独热编码，获取分类数量'''
 one_hot_matrix, num_class = lp.one_hot_matrix(lab)
 '''获取特征数，即基因数量'''
-features = arr_data.shape[0]
+# features = arr_data.shape[0]
+
+
+'''将数据转为tensor并加载到GPU'''
+tensor_data = torch.from_numpy(arr_data).float().to(device)
+tensor_data = dp.tensor_normalize(tensor_data)
+features = tensor_data.shape[0]
+tensor_label = torch.from_numpy(one_hot_matrix).float().to(device)
 
 '''使用Dataset和Dataloader加载训练集，percentage为训练集占比'''
-train_dataset = MyDataset(arr_data, one_hot_matrix, percentage=0.75, train=True, transform=False)
-train_loader = DataLoader(train_dataset, batch_size=128, shuffle=True)
+train_dataset = MyDataset(tensor_data, tensor_label, percentage=0.8, train=True, transform=False)
+train_loader = DataLoader(train_dataset, batch_size=800, shuffle=True)
 
 '''使用Dataset和Dataloader加载验证集，percentage为验证集占比'''
-test_dataset = MyDataset(arr_data, one_hot_matrix, percentage=0.25, train=False, transform=False)
-test_loader = DataLoader(test_dataset, batch_size=128, shuffle=True)
+test_dataset = MyDataset(tensor_data, tensor_label, percentage=0.2, train=False, transform=False)
+test_loader = DataLoader(test_dataset, batch_size=200, shuffle=True)
 
 '''打印训练集和测试集合长度'''
 train_dataset_size = len(train_dataset)
@@ -119,6 +121,11 @@ for i in range(epoch):
         # inputs = inputs.permute(1, 0, 2, 3)
         # print(inputs.shape)
         # print(labels.shape)
+
+        # train_set = dp.capitalize_genes_name(dataset1)
+        # train_set = dp.filt_duplicate_rows(train_set)
+        # inputs = normalize(inputs)
+
         inputs = inputs.to(device)  # GPU           #imgs = imgs.to(device)
         labels = labels.to(device)  # GPU     #targets = targets.to(device)
         outputs = model.forward(inputs)  # 让输入通过层层特征提取网络（前向传播）
@@ -130,7 +137,7 @@ for i in range(epoch):
         optimizer.step()  # 更新权重参数
 
         total_train_step = total_train_step + 1
-        if total_train_step % 100 == 0:
+        if total_train_step % 7 == 0:
             print("第 {} 次训练的Loss：{}".format(total_train_step, loss.item()))
 
     # 验证步骤开始（验证训练结果怎么样）
@@ -159,12 +166,12 @@ for i in range(epoch):
     print("整体测试集上的正确率: {}".format(CorrectRate))
     total_test_step = total_test_step + 1
 
-    if CorrectRate >= 0.45:
+    if CorrectRate >= 0.99:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         torch.save(model.state_dict(), "./checkpoints/A_{}_{}.pth".format(format(CorrectRate, '.4f'), timestamp))
         print("模型已保存")
 
-    if i % 20 == 0:
+    if (i+1) % 200 == 0:
         timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         torch.save(model.state_dict(), "./checkpoints/B_{}_epoch{}_{}.pth".format(format(CorrectRate, '.4f'),i+1, timestamp))
         print("模型已保存")

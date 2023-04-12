@@ -53,7 +53,8 @@ label1 = pd.read_csv(label_path, header=None, sep='\t')
 # print(train_set.shape)
 # train_set = dp.filt_duplicate_rows(train_set)
 # print(train_set.shape)
-dataset1 = dp.normalize(dataset1)
+
+# dataset1 = dp.normalize(dataset1)
 
 
 '''将标签转为字典'''
@@ -64,8 +65,8 @@ lab = lp.convert_type_to_label(label1, label1_dict)
 # print(lab)
 
 '''将数据集和数字标签转为numpy数组'''
-arr_data = np.array(dataset1)
-arr_label = np.array(lab)
+arr_data = np.array(dataset1.values)
+# arr_label = np.array(lab)
 print(arr_data.shape)
 # print(arr_data)
 
