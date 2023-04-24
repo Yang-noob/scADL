@@ -62,7 +62,7 @@ test_set = PredictDataset(arr_data)
 test_loader = DataLoader(test_set, batch_size=100, shuffle=False)
 
 model = FCN_1()
-model.load_state_dict(torch.load('./checkpoints/A_0.9867_2023-04-08_18-34-04.pth'))
+model.load_state_dict(torch.load('./checkpoints/A_0.9867_2023-04-08_18-34-57.pth'))
 model = model.to(device)
 
 # 预测开始
