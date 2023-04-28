@@ -7,6 +7,7 @@ import torch
 from sklearn.decomposition import PCA
 from torch.linalg import svd
 import umap
+import datetime
 
 '''
 数据集格式转换类
@@ -419,6 +420,80 @@ class Dimension_Processing:
         data_umap = umap_.fit_transform(data)
         data = data_umap.T
         return data
+
+
+class save_model:
+    @staticmethod
+    def save_ckpt(epoch, model, optimizer, scheduler, losses, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'losses': losses,
+            },
+            f'{ckpt_folder}{model_name}_{epoch}.pth'
+        )
+
+    @staticmethod
+    def save_simple_ckpt(model, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'model_state_dict': model.module.state_dict()
+            },
+            f'{ckpt_folder}{model_name}.pth'
+        )
+
+    @staticmethod
+    def save_best_ckpt(epoch, model, optimizer, scheduler, losses, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'losses': losses,
+            },
+            f'{ckpt_folder}{model_name}_best.pth'
+        )
+
+    @staticmethod
+    def save_best_model(model, CorrectRate, ckpt_folder='./checkpoints', model_name="A"):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        torch.save(model.state_dict(), "{}/{}_{}_{}.pth".format(ckpt_folder, model_name, format(CorrectRate, '.4f'), timestamp))
+        print("模型已保存")
+        # torch.save(
+        #     {
+        #         'epoch': epoch,
+        #         'model_state_dict': model.module.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'scheduler_state_dict': scheduler.state_dict(),
+        #         'losses': losses,
+        #     },
+        #     f'{ckpt_folder}{model_name}_best.pth'
+        # )
+
 
 # def creat_dir(path):
 #     """
