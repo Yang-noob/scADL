@@ -79,3 +79,26 @@ class FCN_1(nn.Module):
         x = nn.functional.relu(self.fc3(x))
         x = self.fc4(x)
         return x
+
+
+class FCN_2(nn.Module):
+    def __init__(self, dropout=0.05, ln1=100, ln2=50, ln3=25, features=14063, total_number_types=5):
+        super(FCN_2, self).__init__()
+        # 定义神经网络的结构
+        self.fc1 = nn.Linear(features, ln1)  # 输入层 -> 第1个隐藏层
+        self.dropout1 = nn.Dropout(dropout)
+        self.fc2 = nn.Linear(ln1, ln2)  # 第1个隐藏层 -> 第2个隐藏层
+        self.dropout2 = nn.Dropout(dropout)
+        self.fc3 = nn.Linear(ln2, ln3)  # 第2个隐藏层 -> 第3个隐藏层
+        self.dropout3 = nn.Dropout(dropout)
+        self.fc4 = nn.Linear(ln3, total_number_types)  # 输出层
+
+    def forward(self, x):
+        x = nn.functional.relu(self.fc1(x))  # 使用ReLU激活函数
+        x = self.dropout1(x)
+        x = nn.functional.relu(self.fc2(x))
+        x = self.dropout2(x)
+        x = nn.functional.relu(self.fc3(x))
+        x = self.dropout3(x)
+        x = self.fc4(x)
+        return x

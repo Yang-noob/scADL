@@ -56,7 +56,7 @@ label_to_type_dict = lp.label_to_type_dict(label1_dict)
 print("-"*85)
 print("字典:", label_to_type_dict)
 
-arr_data = np.array(dataset1)
+arr_data = np.array(dataset1.values)
 
 test_set = PredictDataset(arr_data)
 test_loader = DataLoader(test_set, batch_size=100, shuffle=False)

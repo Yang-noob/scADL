@@ -7,6 +7,9 @@ import torch
 from sklearn.decomposition import PCA
 from torch.linalg import svd
 import umap
+from sklearn.feature_selection import SelectKBest, f_classif, chi2, mutual_info_classif, mutual_info_regression
+import datetime
+
 
 '''
 数据集格式转换类
@@ -410,7 +413,8 @@ class Dimension_Processing:
         U_k = V[:, :k]
         # 将数据集投影到选定的特征向量上
         X_pca = torch.matmul(tensor_data, U_k)
-        return X_pca.T
+        X_pca = X_pca.T
+        return X_pca
 
     @staticmethod
     def myUMAP(data, features=10000):
@@ -420,39 +424,121 @@ class Dimension_Processing:
         data = data_umap.T
         return data
 
-# def creat_dir(path):
-#     """
-#         Create a directory with an incremental name if the directory already exists.
-#         """
-#     if not os.path.exists(path):
-#         os.mkdir(path)
-#         return path
-#     # if directory already exists, add an incremental suffix
-#     i = 1
-#     while True:
-#         new_path = path + '_' + str(i)
-#         if not os.path.exists(new_path):
-#             os.mkdir(new_path)
-#             return new_path
-#         i += 1
-#
-#
-# def creat_file(path):
-#     """
-#         Create a file with an incremental name if the file already exists.
-#         """
-#     if not os.path.exists(path):
-#         with open(path, 'w'):
-#             pass
-#         return path
-#
-#     # if file already exists, add an incremental suffix
-#     i = 1
-#     while True:
-#         new_path = os.path.splitext(path)[0] + '_' + str(i) + os.path.splitext(path)[1]
-#         if not os.path.exists(new_path):
-#             with open(new_path, 'w'):
-#                 pass
-#             return new_path
-#         i += 1
+    @staticmethod
+    def mySelectBest(data, label, features=10000):
+        data = np.array(data, dtype=np.float32)
+        data = data.T
+        selector = SelectKBest(f_classif, k=features)
+        X_new = selector.fit_transform(data, label)
+        X_new = X_new.T
+        return X_new
 
+
+class save_model:
+    @staticmethod
+    def save_ckpt(epoch, model, optimizer, scheduler, losses, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'losses': losses,
+            },
+            f'{ckpt_folder}{model_name}_{epoch}.pth'
+        )
+
+    @staticmethod
+    def save_simple_ckpt(model, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'model_state_dict': model.module.state_dict()
+            },
+            f'{ckpt_folder}{model_name}.pth'
+        )
+
+    @staticmethod
+    def save_best_ckpt(epoch, model, optimizer, scheduler, losses, model_name, ckpt_folder):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        torch.save(
+            {
+                'epoch': epoch,
+                'model_state_dict': model.module.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'losses': losses,
+            },
+            f'{ckpt_folder}{model_name}_best.pth'
+        )
+
+    @staticmethod
+    def save_best_model(model, CorrectRate, ckpt_folder='./checkpoints', model_name="A"):
+        """
+        保存模型checkpoint
+        """
+        if not os.path.exists(ckpt_folder):
+            os.makedirs(ckpt_folder)
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        torch.save(model.state_dict(), "{}/{}_{}_{}.pth".format(ckpt_folder, model_name, format(CorrectRate, '.4f'), timestamp))
+        print("模型已保存")
+        # torch.save(
+        #     {
+        #         'epoch': epoch,
+        #         'model_state_dict': model.module.state_dict(),
+        #         'optimizer_state_dict': optimizer.state_dict(),
+        #         'scheduler_state_dict': scheduler.state_dict(),
+        #         'losses': losses,
+        #     },
+        #     f'{ckpt_folder}{model_name}_best.pth'
+        # )
+
+
+def creat_dir(path):
+    """
+        Create a directory with an incremental name if the directory already exists.
+        """
+    if not os.path.exists(path):
+        os.mkdir(path)
+        return path
+    # if directory already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = path + '_' + str(i)
+        if not os.path.exists(new_path):
+            os.mkdir(new_path)
+            return new_path
+        i += 1
+
+
+def creat_file(path):
+    """
+        Create a file with an incremental name if the file already exists.
+        """
+    if not os.path.exists(path):
+        with open(path, 'w'):
+            pass
+        return path
+
+    # if file already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = os.path.splitext(path)[0] + '_' + str(i) + os.path.splitext(path)[1]
+        if not os.path.exists(new_path):
+            with open(new_path, 'w'):
+                pass
+            return new_path
+        i += 1

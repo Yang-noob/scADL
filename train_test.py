@@ -3,7 +3,7 @@ import torch.optim as optim
 from read_datasets import MyDataset
 from torch.utils.data import DataLoader
 import torch
-from models import FCN_1, FCN, CNN
+from models import FCN_1, FCN_2, FCN, CNN
 import pandas as pd
 from utils import Labels_Process as lp
 import numpy as np
@@ -11,6 +11,7 @@ import datetime
 from utils import Datasets_Process as dp
 from utils import Dimension_Processing as dip
 from torch.utils.tensorboard import SummaryWriter
+from utils import save_model as sm
 from sklearn.decomposition import PCA
 import matplotlib.pyplot as plt
 # import options as ops
@@ -80,8 +81,18 @@ print("原始数据集大小:",arr_data.shape)
 '''将数据转为tensor并加载到GPU'''
 tensor_data = torch.from_numpy(arr_data).float().to(device)
 tensor_data = dp.tensor_normalize(tensor_data)
+
 tensor_data = tensor_data.to('cpu')
 tensor_data = dip.myPCA(tensor_data, features=1000)
+tensor_data = torch.from_numpy(tensor_data).float().to(device)
+
+# tensor_data = dip.mySVD(tensor_data, features=1000)
+
+# tensor_data = tensor_data.to('cpu')
+# data = dip.mySelectBest(tensor_data, lab, features=1000)
+# tensor_data = torch.from_numpy(data).float().to(device)
+
+tensor_data = tensor_data.to(device)
 features = tensor_data.shape[0]
 tensor_label = torch.from_numpy(one_hot_matrix).float().to(device)
 
@@ -102,7 +113,7 @@ print("基因数量: {}".format(features))
 print("细胞类型数: {}".format(num_class))
 
 # 实例化网络模型
-model = FCN_1(features=features, total_number_types=num_class)
+model = FCN_2(features=features, total_number_types=num_class)
 
 # 加载已训练好的参数
 # model.load_state_dict(torch.load('./checkpoints/A_0.9867_2023-04-08_18-34-04.pth'))
@@ -126,15 +137,6 @@ for i in range(epoch):
     model.train()
     for data in train_loader:
         inputs, labels = data
-        # inputs = torch.unsqueeze(inputs, dim=0)  # 在第0维增加一维，变为(N, C, H, W)
-        # inputs = inputs.permute(1, 0, 2, 3)
-        # print(inputs.shape)
-        # print(labels.shape)
-
-        # train_set = dp.capitalize_genes_name(dataset1)
-        # train_set = dp.filt_duplicate_rows(train_set)
-        # inputs = normalize(inputs)
-
         inputs = inputs.to(device)  # GPU           #imgs = imgs.to(device)
         labels = labels.to(device)  # GPU     #targets = targets.to(device)
         outputs = model.forward(inputs)  # 让输入通过层层特征提取网络（前向传播）
@@ -167,11 +169,11 @@ for i in range(epoch):
             # 特征提取网络经过该轮训练，神经网络参数w被更新，将输入图片放入该网络后的到的得分值被记录下来
             loss = criterion(outputs, labels)  # 计算损失
             total_test_loss = total_test_loss + loss
-            average_loss = total_test_loss / test_dataset_size
             accuracy = (outputs.argmax(1) == labels.argmax(1)).sum()  # 正确率的分子
             total_test_accuracy = total_test_accuracy + accuracy
-            CorrectRate = total_test_accuracy / test_dataset_size
 
+    average_loss = total_test_loss / test_dataset_size
+    CorrectRate = total_test_accuracy / test_dataset_size
     writer.add_scalar('total_test_loss', total_test_loss, i)
     writer.add_scalar('average_test_loss', average_loss, i)
     writer.add_scalar('accuracy', CorrectRate, i)
@@ -181,6 +183,10 @@ for i in range(epoch):
     print("整体测试集上的正确率: {}".format(CorrectRate))
     total_test_step = total_test_step + 1
 
+    max_acc = 0.9
+    if CorrectRate > max_acc:
+        max_acc = CorrectRate
+        sm.save_best_model(model, max_acc)
     # if CorrectRate >= 0.995:
     #     timestamp = datetime.datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     #     torch.save(model.state_dict(), "./checkpoints/A_{}_{}.pth".format(format(CorrectRate, '.4f'), timestamp))

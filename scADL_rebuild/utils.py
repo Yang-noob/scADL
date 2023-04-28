@@ -8,6 +8,8 @@ from sklearn.decomposition import PCA
 from torch.linalg import svd
 import umap
 import datetime
+from sklearn.feature_selection import SelectKBest, f_classif, chi2, mutual_info_classif, mutual_info_regression
+
 
 '''
 数据集格式转换类
@@ -411,7 +413,8 @@ class Dimension_Processing:
         U_k = V[:, :k]
         # 将数据集投影到选定的特征向量上
         X_pca = torch.matmul(tensor_data, U_k)
-        return X_pca.T
+        X_pca = X_pca.T
+        return X_pca
 
     @staticmethod
     def myUMAP(data, features=10000):
@@ -420,6 +423,15 @@ class Dimension_Processing:
         data_umap = umap_.fit_transform(data)
         data = data_umap.T
         return data
+
+    @staticmethod
+    def mySelectBest(data, label, features=10000):
+        data = np.array(data, dtype=np.float32)
+        data = data.T
+        selector = SelectKBest(f_classif, k=features)
+        X_new = selector.fit_transform(data, label)
+        X_new = X_new.T
+        return X_new
 
 
 class save_model:
@@ -495,39 +507,38 @@ class save_model:
         # )
 
 
-# def creat_dir(path):
-#     """
-#         Create a directory with an incremental name if the directory already exists.
-#         """
-#     if not os.path.exists(path):
-#         os.mkdir(path)
-#         return path
-#     # if directory already exists, add an incremental suffix
-#     i = 1
-#     while True:
-#         new_path = path + '_' + str(i)
-#         if not os.path.exists(new_path):
-#             os.mkdir(new_path)
-#             return new_path
-#         i += 1
-#
-#
-# def creat_file(path):
-#     """
-#         Create a file with an incremental name if the file already exists.
-#         """
-#     if not os.path.exists(path):
-#         with open(path, 'w'):
-#             pass
-#         return path
-#
-#     # if file already exists, add an incremental suffix
-#     i = 1
-#     while True:
-#         new_path = os.path.splitext(path)[0] + '_' + str(i) + os.path.splitext(path)[1]
-#         if not os.path.exists(new_path):
-#             with open(new_path, 'w'):
-#                 pass
-#             return new_path
-#         i += 1
+def creat_dir(path):
+    """
+        Create a directory with an incremental name if the directory already exists.
+        """
+    if not os.path.exists(path):
+        os.mkdir(path)
+        return path
+    # if directory already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = path + '_' + str(i)
+        if not os.path.exists(new_path):
+            os.mkdir(new_path)
+            return new_path
+        i += 1
 
+
+def creat_file(path):
+    """
+        Create a file with an incremental name if the file already exists.
+        """
+    if not os.path.exists(path):
+        with open(path, 'w'):
+            pass
+        return path
+
+    # if file already exists, add an incremental suffix
+    i = 1
+    while True:
+        new_path = os.path.splitext(path)[0] + '_' + str(i) + os.path.splitext(path)[1]
+        if not os.path.exists(new_path):
+            with open(new_path, 'w'):
+                pass
+            return new_path
+        i += 1
